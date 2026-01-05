@@ -87,5 +87,12 @@ export const api = {
             headers: getHeaders(token)
         });
         return res.json();
+    },
+
+    getTestHistory: async (token: string) => {
+        const res = await fetch(`${API_URL}/load-test/history`, {
+            headers: getHeaders(token)
+        });
+        return res.json();
     }
 };

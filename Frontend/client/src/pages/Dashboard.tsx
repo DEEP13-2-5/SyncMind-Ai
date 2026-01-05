@@ -27,6 +27,7 @@ import {
 export default function Dashboard() {
   const { user, token } = useAuth();
   const [latestData, setLatestData] = useState<any>(null);
+  const [historyData, setHistoryData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -36,9 +37,16 @@ export default function Dashboard() {
     if (!user || !token) return;
 
     setIsLoading(true);
-    api.getLatestLoadTest(token)
-      .then((res: any) => {
-        setLatestData(res);
+    // Fetch latest and history in parallel
+    Promise.all([
+      api.getLatestLoadTest(token),
+      api.getTestHistory(token)
+    ])
+      .then(([latest, history]) => {
+        setLatestData(latest);
+        if (history?.success) {
+          setHistoryData(history.history || []);
+        }
       })
       .catch((err: any) => console.error("Fetch error:", err))
       .finally(() => setIsLoading(false));
@@ -124,11 +132,15 @@ export default function Dashboard() {
     ]
     : [];
 
-  const throughputData = m
-    ? [
-      { timestamp: "Test Run", value: m.throughput, errors: m.throughput * failRate },
-    ]
-    : [];
+  const throughputData = historyData.length > 0
+    ? historyData.map(h => ({
+      timestamp: h.timestamp,
+      value: h.throughput,
+      errors: h.throughput * h.failureRate
+    }))
+    : m
+      ? [{ timestamp: "Test Run", value: m.throughput, errors: m.throughput * failRate }]
+      : [];
 
   const toMs = (v?: number) => {
     if (typeof v !== "number" || v === 0) return 0;

@@ -115,6 +115,9 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
     } else {
       // REAL MODE: Only runs if explicitly configured (e.g., Local Dev)
       console.log("⚡ ENV: Real Mode. Executing k6 and GitHub analysis...");
+      console.log("🧪 RAW k6 OUTPUT:", realTest);
+      console.log("📦 RAW GitHub OUTPUT:", realGithub);
+
       const [realTest, realGithub] = await Promise.all([
         testURL
           ? runK6Test(testURL, { vus: 100, duration: "5s" }).catch(e => {
@@ -145,10 +148,15 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
       metrics = parseK6Data(testResult);
       charts = buildChartResponse(metrics);
       healthData = buildPieChartData(metrics);
+      console.log("📊 Parsed Metrics:", metrics);
+      console.log("📈 Charts Data:", charts);
+      console.log("🥧 Health Pie Data:", healthData);
+
     }
 
     if (github && github.summary) {
       // Calculate score if present
+      console.log("🐙 Normalized GitHub Signals:", github);
       github.summary.devOpsScore =
         (github.docker.present ? 30 : 0) +
         (github.cicd.present ? 30 : 0) +
@@ -413,12 +421,12 @@ export default router;
 
 
 //frontend
-// return res.json({
-//   success: true,
-//   sessionId: sessionKey,
-//   metrics,
-//   charts,
-//   github,
-//   ai: { message: aiMessage }
-// });
+return res.json({
+  success: true,
+  sessionId: sessionKey,
+  metrics,
+  charts,
+  github,
+  ai: { message: aiMessage }
+});
 

@@ -17,12 +17,13 @@ export const runK6Test = (
   return new Promise((resolve, reject) => {
     // --- DEMO MODE / SIMULATION LOGIC ---
     const mode = process.env.EXECUTION_MODE;
-    const isDemo = mode === "demo";
+    // CRITICAL FIX: Use forceSimulation flag to prevent infinite loops when binary is missing
+    const isDemo = mode === "demo" || forceSimulation === true;
 
-    console.log(`🔍 [Runner] EXECUTION_MODE: "${mode}", isDemo: ${isDemo}`);
+    console.log(`🔍 [Runner] EXECUTION_MODE: "${mode}", forceSimulation: ${forceSimulation}, isDemo: ${isDemo}`);
 
     if (isDemo) {
-      console.log("🛠️ Runner logic: Simulation ACTIVE.");
+      console.log(`🛠️ Runner logic: ${forceSimulation ? "Fallback" : "Manual"} Simulation ACTIVE.`);
 
       // Generate realistic-looking k6 metrics
       const mockLatency = 150 + Math.random() * 300; // 150-450ms

@@ -27,17 +27,9 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-
-        const isRender = origin.includes("onrender.com");
-        const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
-
-        if (isRender || isLocal || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-            callback(null, true);
-        } else {
-            console.error(`🚫 CORS Refused for origin: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
-        }
+        // Log every origin to see what Render is actually receiving
+        console.log(`📡 Incoming request from origin: ${origin || "No Origin"}`);
+        callback(null, true); // Allow everything for now to unblock
     },
     credentials: true
 }));

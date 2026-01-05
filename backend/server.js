@@ -27,12 +27,15 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
 
-        if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+        const isRender = origin.includes("onrender.com");
+        const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
+
+        if (isRender || isLocal || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
             callback(null, true);
         } else {
+            console.error(`🚫 CORS Refused for origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },

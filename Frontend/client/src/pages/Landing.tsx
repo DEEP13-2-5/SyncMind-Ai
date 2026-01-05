@@ -20,9 +20,9 @@ export default function Landing() {
           <span className="text-2xl font-bold font-display tracking-tight">SynthMind AI</span>
         </div>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-          <Link href="#features">
-            <span className="hover:text-primary transition-colors cursor-pointer">Features</span>
-          </Link>
+          <a href="#features" className="hover:text-primary transition-colors cursor-pointer">
+            Features
+          </a>
           <Link href="/pricing">
             <span className="hover:text-primary transition-colors cursor-pointer">Pricing</span>
           </Link>

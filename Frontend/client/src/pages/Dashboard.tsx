@@ -31,35 +31,17 @@ export default function Dashboard() {
 
   const chatRef = useRef<HTMLDivElement | null>(null);
 
-  /* ---------------- FETCH LATEST TEST ---------------- */
-  /* ---------------- FETCH LATEST TEST (POLLING) ---------------- */
+  /* ---------------- FETCH LATEST TEST (ONCE ON MOUNT / UPDATE) ---------------- */
   useEffect(() => {
     if (!user || !token) return;
 
-    const fetchData = () => {
-      api
-        .getLatestLoadTest(token)
-        .then((res: any) => {
-          // Only update if ID changed or data is new to avoid flicker
-          setLatestData((prev: any) => {
-            if (prev?.id !== res?.id) return res;
-            return prev; // Keep existing if same
-          });
-        })
-        .catch((err: any) =>
-          console.error("Polling error:", err)
-        );
-    };
-
-    // Initial fetch
     setIsLoading(true);
     api.getLatestLoadTest(token)
-      .then(setLatestData)
+      .then((res: any) => {
+        setLatestData(res);
+      })
+      .catch((err: any) => console.error("Fetch error:", err))
       .finally(() => setIsLoading(false));
-
-    // Poll every 1 second for "Live" updates
-    const interval = setInterval(fetchData, 1000);
-    return () => clearInterval(interval);
   }, [user?.totalTests, token]);
 
   if (!user) return <Redirect to="/" />;
@@ -251,22 +233,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* STATS */}
-        <div className="grid sm:grid-cols-3 gap-6">
-          {stats.map((stat, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm text-muted-foreground">
-                  {stat.label}
-                </CardTitle>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* MAIN CONTENT (k6 & github metrics only) */}
 
         {/* MAIN CONTENT */}
         {hasNoData ? (

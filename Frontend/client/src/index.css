@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   --font-sans: 'DM Sans', sans-serif;
   --font-display: 'Outfit', sans-serif;

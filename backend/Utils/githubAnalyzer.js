@@ -52,8 +52,12 @@ export const analyzeGithubRepo = async (repoUrl) => {
       });
       for (const dir of subdirs) {
         let subPath = path.join(tempDir, dir, name);
-        if (fs.existsSync(subPath)) return subPath;
+        if (fs.existsSync(subPath)) {
+          console.log(`🔍 [Analyzer] Found ${name} in ${dir}/`);
+          return subPath;
+        }
       }
+      console.log(`⚠️ [Analyzer] ${name} NOT found in root or 1st-level subdirs.`);
       return null;
     };
 

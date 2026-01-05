@@ -60,7 +60,7 @@ export function SystemHealthChart({ data }: { data?: any[] }) {
                                 dataKey="value"
                             >
                                 {chartData.map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color ?? "#64748b"} />
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                             </Pie>
                             <Tooltip
@@ -94,13 +94,7 @@ export function SystemHealthChart({ data }: { data?: any[] }) {
 
 export function ThroughputChart({ data }: { data?: any[] }) {
     const chartData = data || throughputData;
-    const isEmpty =
-        !data ||
-        data.length === 0 ||
-        data.every(d =>
-            (d.value ?? d.throughput ?? 0) === 0 &&
-            (d.errors ?? d.errorRate ?? 0) === 0
-        );
+    const isEmpty = !data || data.length === 0 || data.every(d => d.value === 0 && d.errors === 0);
 
     return (
         <Card className="shadow-lg border-border/50">
@@ -125,11 +119,12 @@ export function ThroughputChart({ data }: { data?: any[] }) {
                             <LineChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                                 <XAxis dataKey="timestamp" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis yAxisId="left" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis yAxisId="right" orientation="right" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                                 <Tooltip />
                                 <Legend />
-                                <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={true} name="Reqs/s" />
-                                <Line type="monotone" dataKey="errors" stroke="#ef4444" strokeWidth={2} dot={true} name="Errors" />
+                                <Line yAxisId="left" type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Reqs/s" />
+                                <Line yAxisId="right" type="monotone" dataKey="errors" stroke="#ef4444" strokeWidth={2} dot={false} name="Errors" />
                             </LineChart>
                         </ResponsiveContainer>
                     )}
@@ -178,11 +173,11 @@ export function ScalabilityChart({ data }: { data?: any[] }) {
     );
 }
 
-export function RepositorySignalsPanel({ data, runtimeMetrics }: { data?: any[], runtimeMetrics?: any }) {
+export function SecurityRadarChart({ data, runtimeMetrics }: { data?: any[], runtimeMetrics?: any }) {
     const chartData = data || securityData;
 
-    // Check if data is truly null/undefined (No repo provided)
-    const isEmpty = !data || data.length === 0;
+    // Check if data is "empty" (all zeros)
+    const isEmpty = !data || data.length === 0 || data.every(d => d.A === 0);
 
     // Calculate Overall Status based on GATING logic
     // 1. If Runtime Failed (high error rate) -> FAIL
@@ -197,9 +192,7 @@ export function RepositorySignalsPanel({ data, runtimeMetrics }: { data?: any[],
 
     // Check repo completeness (are critical signals present?)
     // We filter out 'Overall' from the check to avoid double counting
-    const repoSignalsMissing = chartData.some(
-        d => d.subject !== 'Overall' && (d.A ?? 0) === 0
-    );
+    const repoSignalsMissing = chartData.some(d => d.subject !== 'Overall' && d.A < 50);
 
     let overallStatus = "Pass";
     let overallColor = "text-green-500";
@@ -228,13 +221,9 @@ export function RepositorySignalsPanel({ data, runtimeMetrics }: { data?: any[],
                             <div className="bg-muted/30 rounded-full p-4 mb-3">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground w-8 h-8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></svg>
                             </div>
-                            <h3 className="text-sm font-semibold text-foreground">
-                                {runtimeMetrics?.url ? "Analysis in Progress..." : "No Repository Detected"}
-                            </h3>
+                            <h3 className="text-sm font-semibold text-foreground">No Repository Detected</h3>
                             <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
-                                {runtimeMetrics?.url
-                                    ? "We are currently auditing your repository for DevOps best practices."
-                                    : "Add a GitHub URL to scan for Docker, CI/CD, and K8s configurations."}
+                                Add a GitHub URL to scan for Docker, CI/CD, and K8s configurations.
                             </p>
                         </div>
                     ) : (
@@ -307,25 +296,21 @@ export function SummaryMatrixTable({ metrics, github }: { metrics?: any, github?
         {
             category: "Performance",
             metric: "Latency (p95)",
-            value: metrics?.latency?.p95 != null
-                ? `${metrics.latency.p95}ms`
-                : "N/A",
-            status: metrics?.latency?.p95 != null && metrics.latency.p95 < 500
-                ? "Pass"
-                : "Warn",
+            value: metrics ? `${metrics.latency.p95}ms` : "N/A",
+            status: metrics && metrics.latency.p95 < 500 ? "Pass" : "Warn",
             color: "text-green-500"
         },
         {
             category: "Architecture",
             metric: "Docker Container",
-            value: github?.docker?.present ? "Present" : (metrics?.url ? "Pending Audit..." : "Not detected in repository"),
+            value: github?.docker?.present ? "Present" : "Not detected in repository",
             status: github?.docker?.present ? "Pass" : "Warn",
             color: github?.docker?.present ? "text-green-500" : "text-yellow-500"
         },
         {
             category: "Architecture",
             metric: "CI/CD Pipeline",
-            value: github?.cicd?.present ? "Present" : (metrics?.url ? "Pending Audit..." : "Not detected in repository"),
+            value: github?.cicd?.present ? "Present" : "Not detected in repository",
             status: github?.cicd?.present ? "Pass" : "Warn",
             color: github?.cicd?.present ? "text-green-500" : "text-yellow-500"
         }

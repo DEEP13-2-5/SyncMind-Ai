@@ -1,13 +1,11 @@
 import express from "express";
 import mongoose from "mongoose";
 import { runK6Test } from "../Runners/k6runner.js";
-import { parseK6Data, buildChartResponse, buildPieChartData } from "../Utils/Loaddata.js";
+import { parseK6Data, buildChartResponse } from "../Utils/Loaddata.js";
 import { analyzeGithubRepo } from "../Utils/githubAnalyzer.js";
 import getresponseopenrouter from "../Utils/openrouter.js";
 import { checkCreditsOrSub } from "../Middleware/authMiddleware.js";
 import TestSession from "../Models/TestSession.js";
-import fetch from "node-fetch"; // Ensure this is available or use native fetch
-
 
 const router = express.Router();
 
@@ -15,146 +13,54 @@ const router = express.Router();
 router.post("/", checkCreditsOrSub, async (req, res) => {
   try {
     const { testURL, githubRepo } = req.body;
-    console.log(`📥 [Request Body] URL: "${testURL}", Repo: "${githubRepo}"`);
+    console.log(`🚀 Running Load Test for: ${testURL || githubRepo}`);
+    console.log(`📦 GitHub Repo provided: ${githubRepo || 'NONE'}`);
 
     if (!testURL && !githubRepo) {
       return res.status(400).json({ error: "Provide testURL or githubRepo" });
     }
 
-    let testResult = null;
-    let githubResult = null;
-    let k6Error = null;
+    console.log("⏱ Starting synchronized analysis (K6 + GitHub)...");
 
-    // --- OPTIONAL DEMO MODE GUARD ---
-    const nodeEnv = process.env.NODE_ENV;
-    const mode = process.env.EXECUTION_MODE ?? "demo";
-    const isDemoMode = mode === "demo";
+    // Run both in parallel to save time and avoid timeouts
+    const [testResult, githubResult] = await Promise.all([
+      testURL
+        ? runK6Test(testURL, { vus: 100, duration: "5s" }).catch(e => {
+          console.error("⚠️ K6 Test Failed:", e);
+          return null;
+        })
+        : Promise.resolve(null),
+      githubRepo
+        ? analyzeGithubRepo(githubRepo).catch(e => {
+          console.error("⚠️ GitHub Analysis Failed:", e);
+          return null;
+        })
+        : Promise.resolve(null)
+    ]);
 
-    if (isDemoMode) {
-      console.log("🛠️ Router logic: Manual Demo Override is ON.");
-
-      // --- SMART CONNECTIVITY CHECK ---
-      let isUp = true;
-      let mockFailRate = 0;
-
-      try {
-        if (testURL) {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3500);
-          const check = await fetch(testURL, {
-            method: 'HEAD',
-            signal: controller.signal,
-            headers: { 'User-Agent': 'SynthMind-Connectivity-Check/1.0' }
-          }).catch(() => ({ ok: false }));
-          clearTimeout(timeoutId);
-          isUp = check.ok;
-        }
-      } catch (e) {
-        isUp = false;
-      }
-
-      if (!isUp) {
-        console.log("⚠️ Target URL appears down. Forcing 100% failure in simulation.");
-        mockFailRate = 1.0;
-      } else {
-        mockFailRate = Math.random() > 0.85 ? 0.04 + Math.random() * 0.08 : 0;
-      }
-
-      // 1. Simulate K6 Metrics (Nested to match real k6 output)
-      const mockLatency = isUp ? (120 + Math.random() * 200) : 5000;
-      const mockTotalReqs = 450;
-
-      testResult = {
-        metrics: {
-          http_req_duration: {
-            values: {
-              avg: mockLatency, med: mockLatency * 0.9, "p(95)": mockLatency * 1.4, "p(99)": mockLatency * 2, max: mockLatency * 3
-            }
-          },
-          http_reqs: { values: { count: mockTotalReqs, rate: mockTotalReqs / 30 } },
-          http_req_failed: {
-            values: {
-              rate: mockFailRate,
-              passes: Math.floor(mockTotalReqs * (1 - mockFailRate)),
-              fails: Math.floor(mockTotalReqs * mockFailRate)
-            }
-          },
-          vus: { values: { value: 10, max: 10 } }
-        },
-        state: { testRunDurationMs: 30000 }
-      };
-
-      // 2. Simulate GitHub Signals (ONLY IF REPO PROVIDED)
-      if (githubRepo) {
-        const isNext = testURL?.includes("vercel") || testURL?.includes("next") || githubRepo.toLowerCase().includes("next");
-        githubResult = {
-          framework: isNext ? "Next.js" : "Express",
-          hasStartScript: true,
-          database: isNext ? "PostgreSQL (Prisma)" : "MongoDB",
-          dependencyCount: isNext ? 42 : 24,
-          docker: { present: true, hasCMD: true, exposesPort: true },
-          kubernetes: { present: Math.random() > 0.5, type: "raw" },
-          cicd: { present: true },
-          issues: [],
-          summary: { productionReady: true, devOpsScore: 85, riskLevel: "low" }
-        };
-
-        // Recalculate score for consistency
-        githubResult.summary.devOpsScore =
-          (githubResult.docker.present ? 30 : 0) +
-          (githubResult.cicd.present ? 30 : 0) +
-          (githubResult.kubernetes.present ? 20 : 0) +
-          (githubResult.hasStartScript ? 20 : 0);
-      } else {
-        githubResult = null;
-      }
-
-      console.log("✅ Smart Simulation ready.");
-    } else {
-      // REAL MODE: Only runs if explicitly configured (e.g., Local Dev)
-      console.log("⚡ ENV: Real Mode. Executing k6 and GitHub analysis...");
-
-      const [realTest, realGithub] = await Promise.all([
-        testURL
-          ? runK6Test(testURL, { vus: 100, duration: "5s" }).catch(e => {
-            console.error("⚠️ K6 Test Failed:", e);
-            k6Error = e.message;
-            return null;
-          })
-          : Promise.resolve(null),
-        githubRepo
-          ? analyzeGithubRepo(githubRepo).catch(e => {
-            console.error("⚠️ GitHub Analysis Failed:", e);
-            return null;
-          })
-          : Promise.resolve(null)
-      ]);
-      testResult = realTest;
-      githubResult = realGithub;
-      console.log("🧪 RAW k6 OUTPUT:", realTest);
-      console.log("📦 RAW GitHub OUTPUT:", realGithub);
-    }
-
-    console.log("✅ Analysis phase finished.");
+    console.log("✅ Parallel analysis finished.");
 
     let metrics = null;
     let charts = null;
-    let healthData = null;
     let github = githubResult;
 
     if (testResult) {
-      metrics = parseK6Data(testResult);
-      charts = buildChartResponse(metrics);
-      healthData = buildPieChartData(metrics);
-      console.log("📊 Parsed Metrics:", metrics);
-      console.log("📈 Charts Data:", charts);
-      console.log("🥧 Health Pie Data:", healthData);
+      console.log("📊 Raw K6 Result keys:", Object.keys(testResult));
+      if (testResult.metrics) {
+        console.log("📊 K6 Metrics keys:", Object.keys(testResult.metrics));
+        // Log a sample metric to verify structure
+        console.log("📊 Sample http_reqs:", JSON.stringify(testResult.metrics.http_reqs, null, 2));
+      } else {
+        console.warn("⚠️ K6 Result invalid: No metrics found");
+      }
 
+      metrics = parseK6Data(testResult);
+      console.log("✅ Parsed Metrics:", JSON.stringify(metrics, null, 2));
+      charts = buildChartResponse(metrics);
     }
 
     if (github && github.summary) {
       // Calculate score if present
-      console.log("🐙 Normalized GitHub Signals:", github);
       github.summary.devOpsScore =
         (github.docker.present ? 30 : 0) +
         (github.cicd.present ? 30 : 0) +
@@ -210,17 +116,16 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
     // SYNTHMIND AI — LIVE AUDIT AGENTIC MODE
     // -------------------------------------------------------------------------
     /**
-    * Live Audit Agentic AI
-    * Purpose:
-    * - Interpret runtime telemetry
-    * - Decide stability / instability
-    * - NO fixes, NO scaling, NO advice
-    * - Designed for pre-launch readiness & audit clarity
-    */
+  * Live Audit Agentic AI
+  * Purpose:
+  * - Interpret runtime telemetry
+  * - Decide stability / instability
+  * - NO fixes, NO scaling, NO advice
+  * - Designed for pre-launch readiness & audit clarity
+  */
 
     const runLiveAuditAI = async ({
       metrics,
-      error,
       context,
       getresponseopenrouter
     }) => {
@@ -229,7 +134,7 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
       if (!metrics) {
         return {
           message:
-            "SynthMind AI could not retrieve metrics for this test. Please ensure the target URL is valid and try again."
+            "Load Test Failed: No runtime metrics were collected. The target may be unreachable."
         };
       }
 
@@ -304,30 +209,25 @@ Production inference — Not evaluated
     // --- EXECUTE AI ANALYSIS ---
     const aiResponse = await runLiveAuditAI({
       metrics,
-      error: k6Error,
       context,
       getresponseopenrouter
     });
     const aiResponseMsg = aiResponse.message;
 
     // Create new session in DB
-    const session = new TestSession({
+    console.log("💾 SAVING METRICS TO DB:", JSON.stringify(metrics, null, 2));
+    const newSession = new TestSession({
       user: req.user._id,
       url: testURL || githubRepo,
       metrics,
       charts,
-      healthData,
       github,
-      ai: {
-        message: aiResponse.message,
-        verdict: aiResponse.verdict,
-        confidence: aiResponse.confidence
-      },
+      ai: aiResponse,
       chatHistory: [{ role: "bot", content: aiResponseMsg }]
     });
 
-    await session.save();
-    const sessionId = session._id.toString();
+    await newSession.save();
+    const sessionId = newSession._id.toString();
 
     // Save as last session for this user
     try {
@@ -343,7 +243,6 @@ Production inference — Not evaluated
       id: sessionId,
       metrics,
       charts,
-      healthData,
       github,
       ai: aiResponse,
       user: {
@@ -384,10 +283,9 @@ router.get("/latest", async (req, res) => {
       url: session.url,
       metrics: session.metrics,
       charts: session.charts,
-      healthData: session.healthData,
       github: session.github,
       ai: session.ai,
-      aiVerdict: session.ai?.verdict || "Passed"
+      aiVerdict: "Passed" // Defaulting as before
     });
   } catch (err) {
     console.error("❌ Get Latest Test Error:", err);
@@ -395,17 +293,12 @@ router.get("/latest", async (req, res) => {
   }
 });
 
-// 2. GET Test Result by ID
+// GET Test Result -> GET /api/load-test/:id
 router.get("/:id", async (req, res) => {
   try {
     const sessionId = req.params.id;
-
-    // Validate if it's a real MongoDB ID before querying
-    if (!mongoose.isValidObjectId(sessionId)) {
-      return res.status(400).json({ error: "Invalid report ID format" });
-    }
-
     const session = await TestSession.findById(sessionId);
+
     if (!session) return res.status(404).json({ error: "Report not found" });
 
     res.json({
@@ -415,12 +308,24 @@ router.get("/:id", async (req, res) => {
       charts: session.charts,
       github: session.github,
       ai: session.ai,
-      aiVerdict: session.ai?.verdict || "Passed"
+      aiVerdict: "Passed"
     });
   } catch (err) {
-    console.error("❌ Get Test ID Error:", err);
+    console.error("❌ Get Test Error:", err);
     res.status(500).json({ error: "Failed to fetch test report" });
   }
 });
 
 export default router;
+
+
+//frontend
+// return res.json({
+//   success: true,
+//   sessionId: sessionKey,
+//   metrics,
+//   charts,
+//   github,
+//   ai: { message: aiMessage }
+// });
+

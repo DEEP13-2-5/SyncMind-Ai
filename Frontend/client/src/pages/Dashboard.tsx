@@ -126,11 +126,7 @@ export default function Dashboard() {
 
   const throughputData = m
     ? [
-      { timestamp: "T-4s", value: variance(m.throughput * 0.8), errors: variance(m.throughput * 0.8 * failRate) },
-      { timestamp: "T-3s", value: variance(m.throughput * 0.9), errors: variance(m.throughput * 0.9 * failRate) },
-      { timestamp: "T-2s", value: variance(m.throughput * 1.0), errors: variance(m.throughput * 1.0 * failRate) },
-      { timestamp: "T-1s", value: variance(m.throughput * 1.1), errors: variance(m.throughput * 1.1 * failRate) },
-      { timestamp: "Latest", value: m.throughput, errors: m.throughput * failRate },
+      { timestamp: "Test Run", value: m.throughput, errors: m.throughput * failRate },
     ]
     : [];
 

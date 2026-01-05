@@ -1,0 +1,9 @@
+node_modules
+.DS_Store
+.env
+signup_res.json
+test_output.json
+verify_flow.js
+dist
+build
+.local

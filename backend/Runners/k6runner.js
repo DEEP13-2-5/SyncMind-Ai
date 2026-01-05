@@ -17,7 +17,7 @@ export const runK6Test = (
   return new Promise((resolve, reject) => {
     // --- DEMO MODE / SIMULATION LOGIC ---
     // If explicitly in demo mode OR running in production where k6 might be restricted
-    const isDemo = process.env.EXECUTION_MODE === "demo" || process.env.NODE_ENV === "production";
+    const isDemo = process.env.EXECUTION_MODE === "demo";
 
     if (isDemo) {
       console.log("🛠️ RUNNING IN DEMO MODE: Generating simulated metrics...");

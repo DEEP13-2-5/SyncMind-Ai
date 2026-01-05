@@ -134,7 +134,7 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
       if (!metrics) {
         return {
           message:
-            "Load Test Failed: No runtime metrics were collected. The target may be unreachable."
+            "Load Test & Analysis Failed: The k6 performance engine could not collect metrics. This usually means the target URL is unreachable or the server environment is not configured correctly for load testing."
         };
       }
 

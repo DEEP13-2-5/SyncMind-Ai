@@ -30,27 +30,36 @@ export const runK6Test = (
 
       console.log(`🚀 Executing K6: ${cmd}`);
 
-      exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`❌ K6 Exec Error: ${error.message}`);
-          console.error(`Stderr: ${stderr}`);
-          return reject(
-            new Error(`k6 execution failed: ${error.message}`)
-          );
+      exec("k6 version", (verErr, verStdout) => {
+        if (verErr) {
+          console.error("❌ K6 Binary not found or not executable:", verErr.message);
+          return reject(new Error("k6 performance engine is not installed on the server environment."));
         }
+        console.log(`✅ Running with K6: ${verStdout.trim()}`);
 
-        try {
-          if (!fs.existsSync(resultFile)) {
-            return reject(new Error("K6 output file not found"));
+        exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`❌ K6 Exec Error: ${error.message}`);
+            console.error(`Stderr: ${stderr}`);
+            return reject(
+              new Error(`k6 execution failed: ${error.message}`)
+            );
           }
-          const rawData = fs.readFileSync(resultFile, "utf-8");
-          fs.unlinkSync(resultFile); // cleanup
-          resolve(JSON.parse(rawData));
-        } catch (err) {
-          reject(
-            new Error(`Failed to read k6 output: ${err.message}`)
-          );
-        }
+
+          try {
+            if (!fs.existsSync(resultFile)) {
+              console.error("❌ K6 Result file missing at:", resultFile);
+              return reject(new Error("K6 output file not found. The test may have crashed without output."));
+            }
+            const rawData = fs.readFileSync(resultFile, "utf-8");
+            fs.unlinkSync(resultFile); // cleanup
+            resolve(JSON.parse(rawData));
+          } catch (err) {
+            reject(
+              new Error(`Failed to read k6 output: ${err.message}`)
+            );
+          }
+        });
       });
     } catch (err) {
       reject(err);

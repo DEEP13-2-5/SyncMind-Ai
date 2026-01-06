@@ -20,11 +20,7 @@ export const runK6Test = (
     // CRITICAL FIX: Use forceSimulation flag to prevent infinite loops when binary is missing
     const isDemo = mode === "demo" || forceSimulation === true;
 
-    console.log(`🔍 [Runner] EXECUTION_MODE: "${mode}", forceSimulation: ${forceSimulation}, isDemo: ${isDemo}`);
-
     if (isDemo) {
-      console.log(`🛠️ Runner logic: ${forceSimulation ? "Fallback" : "Manual"} Simulation ACTIVE.`);
-
       // Generate realistic-looking k6 metrics
       const mockLatency = 150 + Math.random() * 300; // 150-450ms
       const mockTotalReqs = vus * 45; // Simulated requests
@@ -75,18 +71,16 @@ export const runK6Test = (
       // Construct single-line command
       const cmd = `k6 run --summary-export="${resultFile}" --env TARGET_URL="${testURL}" --env VUS="${vus}" --env DURATION="${duration}" "${scriptPath}"`;
 
-      console.log(`🚀 Executing K6: ${cmd}`);
-
       exec("k6 version", (verErr, verStdout) => {
         if (verErr) {
           console.error("❌ K6 Binary not found. Triggering fallback simulation...");
           return resolve(runK6Test(testURL, { vus, duration, forceSimulation: true }));
         }
-        console.log(`✅ Running with K6: ${verStdout.trim()}`);
 
         exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
           if (error) {
             console.error(`❌ K6 Exec Error: ${error.message}`);
+            // Keep stderr log for debugging failures only
             console.error(`Stderr: ${stderr}`);
             return reject(
               new Error(`k6 execution failed: ${error.message}`)

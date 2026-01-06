@@ -13,8 +13,6 @@ const router = express.Router();
 router.post("/", checkCreditsOrSub, async (req, res) => {
   try {
     const { testURL, githubRepo } = req.body;
-    console.log(`🚀 Running Load Test for: ${testURL || githubRepo}`);
-    console.log(`📦 GitHub Repo provided: ${githubRepo || 'NONE'}`);
 
     if (!testURL && !githubRepo) {
       return res.status(400).json({ error: "Provide testURL or githubRepo" });
@@ -45,18 +43,10 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
     let github = githubResult;
 
     if (testResult) {
-      console.log("📊 Raw K6 Result keys:", Object.keys(testResult));
-      if (testResult.metrics) {
-        console.log("📊 K6 Metrics keys:", Object.keys(testResult.metrics));
-        // Log a sample metric to verify structure
-        console.log("📊 Sample http_reqs:", JSON.stringify(testResult.metrics.http_reqs, null, 2));
-      } else {
-        console.warn("⚠️ K6 Result invalid: No metrics found");
+      if (testResult) {
+        metrics = parseK6Data(testResult);
+        charts = buildChartResponse(metrics);
       }
-
-      metrics = parseK6Data(testResult);
-      console.log("✅ Parsed Metrics:", JSON.stringify(metrics, null, 2));
-      charts = buildChartResponse(metrics);
     }
 
     if (github && github.summary) {

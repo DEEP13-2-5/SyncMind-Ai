@@ -7,9 +7,9 @@ import { Redirect } from "wouter";
 export default function Landing() {
   const { user } = useAuth();
 
-  if (user) {
-    return <Redirect to="/dashboard" />;
-  }
+  // if (user) {
+  //   return <Redirect to="/dashboard" />;
+  // }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
@@ -30,11 +30,19 @@ export default function Landing() {
             <span className="hover:text-primary transition-colors cursor-pointer">Documentation</span>
           </Link>
         </nav>
-        <Link href="/login">
-          <Button className="rounded-full px-6 bg-foreground text-background hover:bg-foreground/90 shadow-lg">
-            Sign In
-          </Button>
-        </Link>
+        {user ? (
+          <Link href="/dashboard">
+            <Button className="rounded-full px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg glow-effect">
+              View Dashboard <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/login">
+            <Button className="rounded-full px-6 bg-foreground text-background hover:bg-foreground/90 shadow-lg">
+              Sign In
+            </Button>
+          </Link>
+        )}
       </header>
 
       {/* Hero */}

@@ -87,7 +87,7 @@ export default function Subscription() {
 
             <CardFooter>
               <Button
-                className="w-full h-11 text-base text-white"
+                className="w-full h-11 text-base"
                 variant={plan.popular ? "default" : "outline"}
                 disabled={createSub.isPending || user?.subscription.plan === plan.id}
                 onClick={() => createSub.mutate(plan.id as 'weekly' | 'monthly')}

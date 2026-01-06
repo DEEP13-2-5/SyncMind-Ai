@@ -112,7 +112,7 @@ export default function LoadTest() {
         <Card className="border-border shadow-xl">
           <CardHeader>
             <CardTitle>Test Parameters</CardTitle>
-            <CardDescription>Enter the target URL and optional repository for deeper analysis.</CardDescription>
+            <CardDescription>Enter the target URL and GitHub repository for deeper analysis.</CardDescription>
           </CardHeader>
           <CardContent>
             {isSimulating ? (
@@ -148,15 +148,16 @@ export default function LoadTest() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="repo">GitHub Repository (Optional)</Label>
+                  <Label htmlFor="repo">GitHub Repository URL</Label>
                   <div className="relative">
                     <Github className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="repo"
-                      placeholder="username/repo"
+                      placeholder="https://github.com/username/repo"
                       className="pl-9"
                       value={repo}
                       onChange={(e) => setRepo(e.target.value)}
+                      required
                     />
                   </div>
                 </div>

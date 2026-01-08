@@ -125,17 +125,42 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
     }
 
     // -------------------------------------------------------------------------
+    // CALCULATE BUSINESS & STRATEGIC INSIGHTS (DETERMINISTIC FALLBACKS)
+    // -------------------------------------------------------------------------
+    const businessMetrics = {
+      conversionLoss: 0,
+      adSpendRisk: 0,
+      stabilityRiskScore: 0,
+      remediations: [],
+      collapsePoint: 0
+    };
+
+    if (metrics) {
+      // 1s delay = ~7% conversion loss (Formula: latency / 1000 * 7)
+      businessMetrics.conversionLoss = parseFloat(((safeNumber(metrics.latency?.avg, 0) / 1000) * 7).toFixed(1));
+
+      // Ad spend risk (Formula: failure rate * throughput multiplier)
+      businessMetrics.adSpendRisk = Math.round(metrics.failureRateUnderTest * metrics.throughput * 150 * 5); // Rough multiplier
+
+      // Stability Score (0-100)
+      businessMetrics.stabilityRiskScore = Math.max(0, 100 - (metrics.failureRateUnderTest * 500) - (metrics.latency?.p95 / 20));
+
+      // Collapse Point Estimation
+      businessMetrics.collapsePoint = Math.round(metrics.vus * (metrics.failureRateUnderTest > 0.05 ? 0.9 : 1.5));
+
+      // Deterministic Remediation
+      if (metrics.latency?.p95 > 500) businessMetrics.remediations.push("Enable CDN Edge Caching → -600ms p95 latency");
+      if (metrics.throughput < 100) businessMetrics.remediations.push("Implement Redis Caching → +40% throughput throughput capacity");
+      if (metrics.serverErrorRate > 0) businessMetrics.remediations.push("Auto-Scale Infrastructure → Neutralize service disruptions");
+    }
+
+    if (githubResult && !githubResult.cicd?.present) {
+      businessMetrics.remediations.push("Setup CI/CD Pipeline → Reduce 3× outage risk during peak traffic");
+    }
+
+    // -------------------------------------------------------------------------
     // SYNTHMIND AI — LIVE AUDIT AGENTIC MODE
     // -------------------------------------------------------------------------
-    /**
-  * Live Audit Agentic AI
-  * Purpose:
-  * - Interpret runtime telemetry
-  * - Decide stability / instability
-  * - NO fixes, NO scaling, NO advice
-  * - Designed for pre-launch readiness & audit clarity
-  */
-
     const runLiveAuditAI = async ({
       metrics,
       context,
@@ -160,19 +185,19 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
           {
             role: "system",
             content: `
-You are SynthMind AI, a Brutally Honest Business Continuity & Risk Auditor. Your audience is Startup Founders who need the "Harsh Reality," not a sugar-coated report.
+You are SynthMind AI, a Brutally Honest Business Continuity & Risk Auditor. Your audience is Startup Founders and VCs who need the "Harsh Reality."
 
-Your purpose is to provide an uncompromising audit based on **Simulated Load Tests (k6)** and **Real-time Browser Audits (Playwright)**.
+Your purpose is to provide an uncompromising audit based on **Simulated Load Tests (k6)**, **DevOps Signals (GitHub)**, and **Real-time Browser Audits (Playwright)**.
 
 STRICT RULES:
-1. TONE: Be direct, professional, and slightly "harsh." If the data shows a risk, call it a "fail-point" or "disaster waiting to happen."
-2. NO "ERROR" WORD: Never use the word "error" in your report. Instead, say "for now there is not breakdown due to load" if the metrics are stable (0% failures), or use "System Disruption," "Fail-point," or "Integrity Breakdown" if they are not.
-3. NO technical jargon (e.g., "p95", "throughput", "5xx"). Use "User Experience Speed," "System Capacity," and "Service Stability."
-4. BUSINESS IMPACT: Focus heavily on future damages—lost revenue, churn, and brand damage.
-5. SCALABILITY: Explicitly state the "breakpoint" based on the data. If 200 users cause delays, tell them their business will break at user 201.
-6. NO fixes or tech support. You are an Auditor, not a Coder.
+1. TONE: Be direct, slightly "harsh." Call risks "fail-points" or "disaster points."
+2. NO "ERROR" WORD: Use "System Disruption," "Fail-point," or "Integrity Breakdown."
+3. BUSINESS IMPACT: You must translate metrics into MONEY and USERS. (e.g., "1s delay = 7% conversion loss", "Manual deploy = 3x higher outage risk").
+4. REMEDIATION: You must provide exactly 2-3 high-impact actionable next steps (e.g. "Add caching -> +42% throughput").
+5. KILLER VISUAL CONTEXT: Mention the "Collapse Point" where the product architecture fundamentally dies.
+6. NO fixes or tech support. You are an Auditor.
 
-If asked for help: "This interface provides brutal business auditing only. Use Ask AI for remediation."
+If asked for help: "This interface provides business auditing only. Use Ask AI for remediation."
         `.trim()
           },
           {
@@ -180,22 +205,22 @@ If asked for help: "This interface provides brutal business auditing only. Use A
             content: `
 ${safeContext}
 
-Generate the "Harsh Reality" Live Audit strictly in this format:
+Generate the "Harsh Reality Executive Summary" strictly in this format:
 
 **SynthMind AI Verdict**
 
-Paragraph 1: The Harsh Reality (Launch Suitability)
-Tell the founder exactly what their website does and what works. Then, tell them if they are TRULY ready. Be honest: if the browser load is slow, tell them they are boring their users to death. Mention the simulation and live audit as your proof.
+Paragraph 1: The Business Reality (Launch Suitability)
+Tell the founder exactly what their website does and what works. Map technical performance to conversion and revenue. (e.g. "At your current speed, you are burning 7% of potential revenue due to latency.")
 
-Paragraph 2: The Breakpoint (Stability & Scalability)
-Based on the simulated traffic, where does the product break? Use the data to explain the business impact of these limits. (e.g., "At your current capacity, your marketing spend will be wasted because the site will crash.")
+Paragraph 2: The Actionable Remediation (Must-Do Now)
+Provide the top 2-3 specific technical fixes that will lead to business gains. Format as: "Add [Feature] -> [Business Benefit]".
 
-Paragraph 3: Future Damages (The Unknowns)
-What are the "Damages in Future" that this test hasn't even uncovered? Mention security risks, viral growth crashes, and the cost of being unprepared.
+Paragraph 3: The Collapse Point (Strategic Risk)
+Based on the data, what is the exact traffic volume where your current tech stack dies? Explain the disaster that follows.
 
 Confidence Scope:
 Runtime telemetry — High
-Browser experience — High
+Business Impact Mapping — High
 Repository signals — Medium
 Production inference — Not evaluated
         `.trim()
@@ -207,12 +232,12 @@ Production inference — Not evaluated
         aiResponseMsg =
           typeof response === "string" && response.trim().length > 0
             ? response.trim()
-            : "**SynthMind AI Verdict**\n\nAnalysis completed. Refer to displayed metrics.";
+            : "**SynthMind AI Verdict**\n\nAnalysis completed. Refer to metrics.";
 
       } catch (err) {
         console.error("⚠️ Live Audit Agentic AI failed:", err);
         aiResponseMsg =
-          "SynthMind AI could not generate the live audit due to a temporary service issue.";
+          "SynthMind AI could not generate the live audit.";
       }
 
       return {
@@ -229,8 +254,6 @@ Production inference — Not evaluated
     const aiResponseMsg = aiResponse.message;
 
     // Create new session in DB
-
-    // console.log("💾 SAVING METRICS TO DB:", JSON.stringify(metrics, null, 2));
     const newSession = new TestSession({
       user: req.user._id,
       url: testURL || githubRepo,
@@ -238,7 +261,10 @@ Production inference — Not evaluated
       browserMetrics: playwrightResult,
       charts,
       github,
-      ai: aiResponse,
+      ai: {
+        ...aiResponse,
+        businessInsights: businessMetrics
+      },
       chatHistory: [{ role: "bot", content: aiResponseMsg }]
     });
 

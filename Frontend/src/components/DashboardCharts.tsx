@@ -1,7 +1,8 @@
 import {
     PieChart, Pie, Cell,
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    BarChart, Bar, AreaChart, Area
+    BarChart, Bar, AreaChart, Area,
+    Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Activity } from "lucide-react";
@@ -31,11 +32,11 @@ const scalabilityData = [
 ];
 
 const securityData = [
-    { subject: 'Auth Security', A: 90, fullMark: 150 },
-    { subject: 'Rate Limiting', A: 75, fullMark: 150 },
-    { subject: 'API Resilience', A: 85, fullMark: 150 },
-    { subject: 'Data Integrity', A: 95, fullMark: 150 },
-    { subject: 'Input Validation', A: 70, fullMark: 150 },
+    { subject: 'Performance', A: 80, fullMark: 100 },
+    { subject: 'Accessibility', A: 85, fullMark: 100 },
+    { subject: 'Best Practices', A: 88, fullMark: 100 },
+    { subject: 'SEO', A: 92, fullMark: 100 },
+    { subject: 'Interactivity', A: 75, fullMark: 100 },
 ];
 
 export function SystemHealthChart({ data, metrics, github }: { data?: any[], metrics?: any, github?: any }) {
@@ -341,98 +342,45 @@ export function ScalabilityChart({ data }: { data?: any[] }) {
 export function SecurityRadarChart({ data, runtimeMetrics }: { data?: any[], runtimeMetrics?: any }) {
     const chartData = data || securityData;
 
-    // Check if data is "empty" (all zeros)
+    // Check if data is "empty" (all zeros or no data)
     const isEmpty = !data || data.length === 0 || data.every(d => d.A === 0);
-
-    // Calculate Overall Status based on GATING logic
-    // 1. If Runtime Failed (high error rate) -> FAIL
-    // 2. If Runtime Passed but Repo Signals mixed -> WARN
-    // 3. If Runtime Passed and Repo Signals OK -> PASS
-
-    // Check runtime failure (failureRate > 5% or serverErrors > 1%)
-    const runtimeFailed = runtimeMetrics && (
-        (runtimeMetrics.failureRateUnderTest > 0.05) ||
-        (runtimeMetrics.serverErrorRate > 0.01)
-    );
-
-    // Check repo completeness (are critical signals present?)
-    // We filter out 'Overall' from the check to avoid double counting
-    const repoSignalsMissing = chartData.some(d => d.subject !== 'Overall' && d.A < 50);
-
-    let overallStatus = "Pass";
-    let overallColor = "text-green-500";
-    let overallLabel = "Production Ready";
-
-    if (runtimeFailed) {
-        overallStatus = "Fail";
-        overallColor = "text-red-500";
-        overallLabel = "Runtime Failure";
-    } else if (repoSignalsMissing) {
-        overallStatus = "Warn";
-        overallColor = "text-yellow-500";
-        overallLabel = "Improvements Needed";
-    }
 
     return (
         <Card className="shadow-lg border-border/50">
             <CardHeader>
-                <CardTitle className="text-lg">Repository Signals (Static Analysis)</CardTitle>
-                <CardDescription>Presence of DevOps best practices in repository</CardDescription>
+                <CardTitle className="text-lg">Browser Experience Audit</CardTitle>
+                <CardDescription>Performance, Accessibility, and Best Practices (Playwright Analysis)</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="h-[300px] w-full relative">
                     {isEmpty ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                             <div className="bg-muted/30 rounded-full p-4 mb-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground w-8 h-8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></svg>
+                                <Activity className="text-muted-foreground w-8 h-8" />
                             </div>
-                            <h3 className="text-sm font-semibold text-foreground">No Repository Detected</h3>
+                            <h3 className="text-sm font-semibold text-foreground">No Audit Data</h3>
                             <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
-                                Add a GitHub URL to scan for Docker, CI/CD, and K8s configurations.
+                                Run a test with a target URL to trigger the automated browser health audit.
                             </p>
                         </div>
                     ) : (
-                        <div className="space-y-4 py-4">
-                            {chartData.map((item, idx) => {
-                                // Skip "Overall" in the list if we handled it separately, 
-                                // OR render it with the new logic. Let's render it last.
-                                if (item.subject === "Overall") {
-                                    return (
-                                        <div key={idx} className="space-y-1 pt-2 border-t border-border/50">
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className="font-bold">Overall Status</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-xs font-bold ${overallColor}`}>
-                                                        {overallStatus === "Pass" ? '✓ Ready' : (overallStatus === "Warn" ? '⚠️ ' + overallLabel : '✗ ' + overallLabel)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                }
-
-                                const percentage = item.A;
-                                const isDetected = percentage > 0; // Simple existence check
-                                return (
-                                    <div key={idx} className="space-y-1">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="font-medium">{item.subject}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-xs font-bold ${isDetected ? 'text-green-500' : 'text-yellow-500'}`}>
-                                                    {isDetected ? '✓ Detected' : '⚠️ Not detected'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full transition-all ${isDetected ? 'bg-green-500' : 'bg-yellow-500'}`}
-                                                style={{ width: `${isDetected ? 100 : 5}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="60%" data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+                                <PolarGrid stroke="hsl(var(--border))" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                <Radar
+                                    name="Score"
+                                    dataKey="A"
+                                    stroke="hsl(var(--primary))"
+                                    fill="hsl(var(--primary))"
+                                    fillOpacity={0.6}
+                                />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', background: 'hsl(var(--background))' }}
+                                />
+                            </RadarChart>
+                        </ResponsiveContainer>
                     )}
                 </div>
             </CardContent>

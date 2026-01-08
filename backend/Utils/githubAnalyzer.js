@@ -34,9 +34,20 @@ export const analyzeGithubRepo = async (repoUrl) => {
   };
 
   try {
-    await execPromise(
-      `git clone --depth 1 --filter=blob:none ${repoUrl} ${tempDir}`
-    );
+    let retries = 2;
+    while (retries > 0) {
+      try {
+        await execPromise(
+          `git clone --depth 1 --filter=blob:none ${repoUrl} ${tempDir}`
+        );
+        break;
+      } catch (e) {
+        retries--;
+        if (retries === 0) throw e;
+        // console.log(`🔄 [Analyzer] Clone failed, retrying... (${retries} left)`);
+        await new Promise(r => setTimeout(r, 2000)); // wait 2s
+      }
+    }
 
     // --- SEARCH HELPERS ---
     const findFile = (name) => {
@@ -53,11 +64,11 @@ export const analyzeGithubRepo = async (repoUrl) => {
       for (const dir of subdirs) {
         let subPath = path.join(tempDir, dir, name);
         if (fs.existsSync(subPath)) {
-          console.log(`🔍 [Analyzer] Found ${name} in ${dir}/`);
+          // console.log(`🔍 [Analyzer] Found ${name} in ${dir}/`);
           return subPath;
         }
       }
-      console.log(`⚠️ [Analyzer] ${name} NOT found in root or 1st-level subdirs.`);
+      // console.log(`⚠️ [Analyzer] ${name} NOT found in root or 1st-level subdirs.`);
       return null;
     };
 

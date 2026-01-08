@@ -108,11 +108,11 @@ export default function Dashboard() {
   ];
 
   const mockSecurity = [
-    { subject: "Docker", A: 100, fullMark: 100 },
-    { subject: "CI/CD", A: 0, fullMark: 100 },
-    { subject: "K8s", A: 60, fullMark: 100 },
-    { subject: "Scripts", A: 100, fullMark: 100 },
-    { subject: "Overall", A: 75, fullMark: 100 },
+    { subject: 'Performance', A: 85, fullMark: 100 },
+    { subject: 'Accessibility', A: 90, fullMark: 100 },
+    { subject: 'Best Practices', A: 88, fullMark: 100 },
+    { subject: 'SEO', A: 95, fullMark: 100 },
+    { subject: 'Interactivity', A: 82, fullMark: 100 },
   ];
 
   /* ---------------- REAL DATA WITH SYNTHETIC TREND ---------------- */
@@ -234,13 +234,15 @@ export default function Dashboard() {
     ].filter(item => item.latency > 0) // Remove zero values
     : [];
 
-  const securityData = g
+  const b = latestData?.browserMetrics;
+
+  const securityData = b
     ? [
-      { subject: "Docker", A: g.docker?.present ? 95 : 0, fullMark: 100 },
-      { subject: "CI/CD", A: g.cicd?.present ? 90 : 0, fullMark: 100 },
-      { subject: "K8s", A: g.kubernetes?.present ? 80 : 0, fullMark: 100 },
-      { subject: "Scripts", A: g.hasStartScript ? 100 : 0, fullMark: 100 },
-      { subject: "Overall", A: g.summary?.devOpsScore ?? 0, fullMark: 100 },
+      { subject: "Performance", A: b.performance || 0, fullMark: 100 },
+      { subject: "Accessibility", A: b.accessibility || 0, fullMark: 100 },
+      { subject: "Best Practices", A: b.bestPractices || 0, fullMark: 100 },
+      { subject: "SEO", A: b.seo || 0, fullMark: 100 },
+      { subject: "Interactivity", A: b.interactivity || 0, fullMark: 100 },
     ]
     : mockSecurity; // Show demo data instead of empty
 

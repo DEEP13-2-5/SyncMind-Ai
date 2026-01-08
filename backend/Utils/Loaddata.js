@@ -132,6 +132,21 @@ export const buildChartResponse = (metrics) => {
 };
 
 /* ===========================
+   RADAR CHART FORMATTER (Browser Audit)
+   =========================== */
+export const buildRadarChartData = (browserMetrics) => {
+  if (!browserMetrics) return [];
+
+  return [
+    { subject: 'Performance', A: browserMetrics.performance || 0, fullMark: 100 },
+    { subject: 'Accessibility', A: browserMetrics.accessibility || 0, fullMark: 100 },
+    { subject: 'Best Practices', A: browserMetrics.bestPractices || 0, fullMark: 100 },
+    { subject: 'SEO', A: browserMetrics.seo || 0, fullMark: 100 },
+    { subject: 'Interactivity', A: browserMetrics.interactivity || 0, fullMark: 100 },
+  ];
+};
+
+/* ===========================
    PIE CHART FORMATTER (Health)
    =========================== */
 export const buildPieChartData = (metrics) => {

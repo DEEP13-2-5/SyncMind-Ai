@@ -2,6 +2,7 @@
   "dependencies": {
     "@openrouter/sdk": "^0.3.11",
     "bcryptjs": "^3.0.3",
+    "chromium": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -9,6 +10,8 @@
     "mongoose": "^9.1.1",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
+    "nodemon": "^3.1.11",
+    "playwright": "^1.57.0",
     "razorpay": "^2.9.6",
     "uuid": "^13.0.0"
   },

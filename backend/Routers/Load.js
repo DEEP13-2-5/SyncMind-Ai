@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import { runK6Test } from "../Runners/k6runner.js";
+import { runPlaywrightAudit } from "../Runners/playwrightRunner.js";
 import { parseK6Data, buildChartResponse } from "../Utils/Loaddata.js";
 import { analyzeGithubRepo } from "../Utils/githubAnalyzer.js";
 import getresponseopenrouter from "../Utils/openrouter.js";
@@ -18,12 +19,13 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
       return res.status(400).json({ error: "Provide testURL or githubRepo" });
     }
 
-    console.log("⏱ Starting synchronized analysis (K6 + GitHub)...");
 
-    // Run both in parallel to save time and avoid timeouts
-    const [testResult, githubResult] = await Promise.all([
+    // console.log("⏱ Starting synchronized analysis (K6 + GitHub)...");
+
+    // Run all in parallel to save time and avoid timeouts
+    const [testResult, githubResult, playwrightResult] = await Promise.all([
       testURL
-        ? runK6Test(testURL, { vus: 150, duration: "5s" }).catch(e => {
+        ? runK6Test(testURL, { vus: 200, duration: "5s" }).catch(e => {
           console.error("⚠️ K6 Test Failed:", e);
           return null;
         })
@@ -33,10 +35,17 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
           console.error("⚠️ GitHub Analysis Failed:", e);
           return null;
         })
+        : Promise.resolve(null),
+      testURL
+        ? runPlaywrightAudit(testURL).catch(e => {
+          console.error("⚠️ Playwright Audit Failed:", e);
+          return null;
+        })
         : Promise.resolve(null)
     ]);
 
-    console.log("✅ Parallel analysis finished.");
+
+    // console.log("✅ Parallel analysis finished.");
 
     let metrics = null;
     let charts = null;
@@ -102,6 +111,19 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
       context += `Repository Signals: Not available (no repository provided)\n\n`;
     }
 
+    if (playwrightResult) {
+      context += `Browser Experience Audit (External):\n`;
+      context += `- Performance Score: ${playwrightResult.performance}/100\n`;
+      context += `- Accessibility Score: ${playwrightResult.accessibility}/100\n`;
+      context += `- Best Practices Score: ${playwrightResult.bestPractices}/100\n`;
+      context += `- SEO Score: ${playwrightResult.seo}/100\n`;
+      context += `- Interactivity Score: ${playwrightResult.interactivity}/100\n`;
+      if (playwrightResult.loadTimeMs) {
+        context += `- Real Browser Load Time: ${playwrightResult.loadTimeMs} ms\n`;
+      }
+      context += `\n`;
+    }
+
     // -------------------------------------------------------------------------
     // SYNTHMIND AI — LIVE AUDIT AGENTIC MODE
     // -------------------------------------------------------------------------
@@ -138,18 +160,19 @@ router.post("/", checkCreditsOrSub, async (req, res) => {
           {
             role: "system",
             content: `
-You are SynthMind AI, a Mature Business Continuity Analyst. Your audience is Non-Technical Startup Founders.
+You are SynthMind AI, a Brutally Honest Business Continuity & Risk Auditor. Your audience is Startup Founders who need the "Harsh Reality," not a sugar-coated report.
 
-Your purpose is to interpret telemetry to determine if a product is ready for users (Launch Readiness).
+Your purpose is to provide an uncompromising audit based on **Simulated Load Tests (k6)** and **Real-time Browser Audits (Playwright)**.
 
 STRICT RULES:
-1. NO technical jargon (e.g., "p95", "throughput", "5xx") in the main paragraphs. Use "User Experience Speed", "System Capacity", and "Error Rate".
-2. NO fixes, scaling advice, or technical remediation.
-3. NO mention of databases, infrastructure, or root causes.
-4. If failures exist, explain the BUSINESS IMPACT (i.e., "Users will see errors").
+1. TONE: Be direct, professional, and slightly "harsh." If the data shows a risk, call it a "fail-point" or "disaster waiting to happen."
+2. NO "ERROR" WORD: Never use the word "error" in your report. Instead, say "for now there is not breakdown due to load" if the metrics are stable (0% failures), or use "System Disruption," "Fail-point," or "Integrity Breakdown" if they are not.
+3. NO technical jargon (e.g., "p95", "throughput", "5xx"). Use "User Experience Speed," "System Capacity," and "Service Stability."
+4. BUSINESS IMPACT: Focus heavily on future damages—lost revenue, churn, and brand damage.
+5. SCALABILITY: Explicitly state the "breakpoint" based on the data. If 200 users cause delays, tell them their business will break at user 201.
+6. NO fixes or tech support. You are an Auditor, not a Coder.
 
-If asked for technical help, respond:
-"This interface provides business analysis only. Use Ask AI for technical remediation."
+If asked for help: "This interface provides brutal business auditing only. Use Ask AI for remediation."
         `.trim()
           },
           {
@@ -157,21 +180,22 @@ If asked for technical help, respond:
             content: `
 ${safeContext}
 
-Generate the Live Audit strictly in this format:
+Generate the "Harsh Reality" Live Audit strictly in this format:
 
 **SynthMind AI Verdict**
 
-Paragraph 1: Launch Suitability
-State clearly whether the product is suitable for a public launch under this specific load. Describe the speed and success rate in terms of "User Experience".
+Paragraph 1: The Harsh Reality (Launch Suitability)
+Tell the founder exactly what their website does and what works. Then, tell them if they are TRULY ready. Be honest: if the browser load is slow, tell them they are boring their users to death. Mention the simulation and live audit as your proof.
 
-Paragraph 2: Stability Reasoning
-Explain what the data indicates about the product's stability. Use business impact reasoning (e.g., "The system is robust enough for your expected initial traffic").
+Paragraph 2: The Breakpoint (Stability & Scalability)
+Based on the simulated traffic, where does the product break? Use the data to explain the business impact of these limits. (e.g., "At your current capacity, your marketing spend will be wasted because the site will crash.")
 
-Paragraph 3: Unknowns
-Explain what this specific test cannot tell you (e.g., "This doesn't guarantee security or stability under 10x more load").
+Paragraph 3: Future Damages (The Unknowns)
+What are the "Damages in Future" that this test hasn't even uncovered? Mention security risks, viral growth crashes, and the cost of being unprepared.
 
 Confidence Scope:
 Runtime telemetry — High
+Browser experience — High
 Repository signals — Medium
 Production inference — Not evaluated
         `.trim()
@@ -205,11 +229,13 @@ Production inference — Not evaluated
     const aiResponseMsg = aiResponse.message;
 
     // Create new session in DB
-    console.log("💾 SAVING METRICS TO DB:", JSON.stringify(metrics, null, 2));
+
+    // console.log("💾 SAVING METRICS TO DB:", JSON.stringify(metrics, null, 2));
     const newSession = new TestSession({
       user: req.user._id,
       url: testURL || githubRepo,
       metrics,
+      browserMetrics: playwrightResult,
       charts,
       github,
       ai: aiResponse,
@@ -223,7 +249,8 @@ Production inference — Not evaluated
     try {
       req.user.lastSessionId = sessionId;
       await req.user.save();
-      console.log(`💾 Last session ID (${sessionId}) saved for user: ${req.user.username}`);
+
+      // console.log(`💾 Last session ID (${sessionId}) saved for user: ${req.user.username}`);
     } catch (saveErr) {
       console.error("⚠️ Failed to save lastSessionId:", saveErr);
     }
@@ -232,6 +259,7 @@ Production inference — Not evaluated
       success: true,
       id: sessionId,
       metrics,
+      browserMetrics: newSession?.browserMetrics || playwrightResult,
       charts,
       github,
       ai: aiResponse,
@@ -272,6 +300,7 @@ router.get("/latest", async (req, res) => {
       id: session._id,
       url: session.url,
       metrics: session.metrics,
+      browserMetrics: session.browserMetrics,
       charts: session.charts,
       github: session.github,
       ai: session.ai,
@@ -295,6 +324,7 @@ router.get("/:id", async (req, res) => {
       id: session._id,
       url: session.url,
       metrics: session.metrics,
+      browserMetrics: session.browserMetrics,
       charts: session.charts,
       github: session.github,
       ai: session.ai,

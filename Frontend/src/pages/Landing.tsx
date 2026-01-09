@@ -131,46 +131,6 @@ export default function Landing() {
                         </div>
                     </div>
                 </section>
-
-                {/* Validation Pipeline */}
-                <section className="py-32 relative">
-                    <div className="container mx-auto px-4">
-                        <div className="relative p-12 md:p-16 rounded-[3rem] glass-card border border-white/10">
-
-                            <div className="flex flex-col md:flex-row items-center gap-12">
-                                <div className="flex gap-4">
-                                    <div className="w-16 h-24 border rounded-xl flex items-center justify-center">
-                                        <Layout />
-                                    </div>
-                                    <div className="w-16 h-20 border rounded-xl flex items-center justify-center mt-4">
-                                        <Activity />
-                                    </div>
-                                    <div className="w-16 h-28 border rounded-xl flex items-center justify-center -mt-4">
-                                        <Layers />
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 text-center">
-                                    <img src="/logo.png" className="w-10 mx-auto mb-3" />
-                                    <p className="text-xs font-black tracking-widest uppercase text-primary">
-                                        Pre-Launch Validation Layer
-                                    </p>
-                                </div>
-
-                                <div className="text-center">
-                                    <div className="w-24 h-24 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center mb-4">
-                                        <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                                    </div>
-                                    <span className="text-xs font-black tracking-widest uppercase text-emerald-500">
-                                        Production-Ready
-                                    </span>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </section>
-
             </main>
 
             {/* Footer */}
